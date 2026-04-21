@@ -12,6 +12,11 @@ class AnalysisCreate(BaseModel):
     num_clusters: int = 5
 
 
+class RepresentativeTicketResponse(BaseModel):
+    key: str
+    summary: str
+
+
 class ClusterResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -20,7 +25,7 @@ class ClusterResponse(BaseModel):
     label: str
     ticket_count: int
     keywords: Optional[List[str]] = None
-    representative_tickets: Optional[list] = None
+    representative_tickets: Optional[List[RepresentativeTicketResponse]] = None
     percentage: Optional[float] = None
 
 
@@ -38,3 +43,29 @@ class AnalysisResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
     clusters: Optional[List[ClusterResponse]] = None
+
+
+class TicketSearchItemResponse(BaseModel):
+    jira_key: str
+    summary: str
+    description_preview: Optional[str] = None
+    issue_type: Optional[str] = None
+    priority: Optional[str] = None
+    ticket_status: Optional[str] = None
+    cluster_id: Optional[int] = None
+    cluster_label: Optional[str] = None
+    similarity_score: Optional[float] = None
+
+
+class TicketSearchResponse(BaseModel):
+    items: List[TicketSearchItemResponse]
+    total: int
+    limit: int
+    offset: int
+    query: Optional[str] = None
+
+
+class TicketDetailResponse(TicketSearchItemResponse):
+    analysis_id: UUID
+    description: Optional[str] = None
+    jira_issue_url: str

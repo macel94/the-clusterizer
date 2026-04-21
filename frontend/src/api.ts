@@ -1,4 +1,4 @@
-import type { Analysis, AnalysisCreate } from './types';
+import type { Analysis, AnalysisCreate, TicketDetail, TicketSearchResponse } from './types';
 
 const BASE = import.meta.env.VITE_API_BASE ?? '';
 
@@ -30,4 +30,20 @@ export function getAnalysis(id: string): Promise<Analysis> {
 
 export function deleteAnalysis(id: string): Promise<void> {
   return request<void>(`/api/analyses/${id}`, { method: 'DELETE' });
+}
+
+export function searchAnalysisTickets(
+  analysisId: string,
+  params: { query?: string; limit?: number; offset?: number } = {},
+): Promise<TicketSearchResponse> {
+  const searchParams = new URLSearchParams();
+  if (params.query) searchParams.set('query', params.query);
+  if (params.limit !== undefined) searchParams.set('limit', String(params.limit));
+  if (params.offset !== undefined) searchParams.set('offset', String(params.offset));
+  const suffix = searchParams.size ? `?${searchParams.toString()}` : '';
+  return request<TicketSearchResponse>(`/api/analyses/${analysisId}/tickets${suffix}`);
+}
+
+export function getAnalysisTicket(analysisId: string, jiraKey: string): Promise<TicketDetail> {
+  return request<TicketDetail>(`/api/analyses/${analysisId}/tickets/by-key/${encodeURIComponent(jiraKey)}`);
 }

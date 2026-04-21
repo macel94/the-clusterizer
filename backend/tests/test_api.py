@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import uuid
 
+import numpy as np
 import pytest
 import responses as rsps_lib
 
@@ -228,4 +229,120 @@ def test_delete_analysis(test_client):
 
 def test_delete_analysis_not_found(test_client):
     resp = test_client.delete(f"/api/analyses/{uuid.uuid4()}")
+    assert resp.status_code == 404
+
+
+def _make_vector(x: float, y: float = 0.0) -> list[float]:
+    from app.config import settings
+
+    vec = [0.0] * settings.OLLAMA_EMBED_DIM
+    vec[0] = x
+    vec[1] = y
+    return vec
+
+
+def _seed_ticket_analysis(db_session):
+    from app.models import Analysis, Cluster, Ticket
+
+    analysis = Analysis(
+        id=uuid.uuid4(),
+        jira_url=JIRA_URL,
+        jql_filter="project = TEST",
+        num_clusters=2,
+        status="completed",
+        total_tickets=2,
+    )
+    db_session.add(analysis)
+    db_session.add_all(
+        [
+            Cluster(
+                analysis_id=analysis.id,
+                cluster_number=0,
+                label="Authentication Issues",
+                ticket_count=1,
+                keywords=["login"],
+                representative_tickets=[{"key": "TEST-1", "summary": "User login fails"}],
+            ),
+            Cluster(
+                analysis_id=analysis.id,
+                cluster_number=1,
+                label="Reporting Problems",
+                ticket_count=1,
+                keywords=["dashboard"],
+                representative_tickets=[{"key": "TEST-2", "summary": "Dashboard export is blank"}],
+            ),
+            Ticket(
+                analysis_id=analysis.id,
+                jira_key="TEST-1",
+                summary="User login fails after password reset",
+                description="Users cannot sign in after a password reset flow.",
+                issue_type="Bug",
+                priority="High",
+                ticket_status="To Do",
+                cluster_id=0,
+                embedding=_make_vector(1.0, 0.0),
+            ),
+            Ticket(
+                analysis_id=analysis.id,
+                jira_key="TEST-2",
+                summary="Dashboard export generates blank CSV files",
+                description="Exported reporting files are blank for finance users.",
+                issue_type="Bug",
+                priority="Medium",
+                ticket_status="In Progress",
+                cluster_id=1,
+                embedding=_make_vector(0.0, 1.0),
+            ),
+        ]
+    )
+    db_session.commit()
+    return analysis
+
+
+def test_list_analysis_tickets_returns_ticket_page(test_client, db_session):
+    analysis = _seed_ticket_analysis(db_session)
+
+    resp = test_client.get(f"/api/analyses/{analysis.id}/tickets")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 2
+    assert body["limit"] == 20
+    assert body["offset"] == 0
+    assert body["query"] is None
+    assert [item["jira_key"] for item in body["items"]] == ["TEST-1", "TEST-2"]
+    assert body["items"][0]["cluster_label"] == "Authentication Issues"
+
+
+def test_search_analysis_tickets_returns_semantic_matches(test_client, db_session, monkeypatch):
+    analysis = _seed_ticket_analysis(db_session)
+
+    def fake_generate_embeddings(texts):
+        assert texts == ["login reset problems"]
+        return np.array([_make_vector(1.0, 0.0)], dtype=np.float32)
+
+    monkeypatch.setattr("app.routes.analyses.generate_embeddings", fake_generate_embeddings)
+
+    resp = test_client.get(f"/api/analyses/{analysis.id}/tickets", params={"query": "login reset problems"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["query"] == "login reset problems"
+    assert body["items"][0]["jira_key"] == "TEST-1"
+    assert body["items"][0]["similarity_score"] >= body["items"][1]["similarity_score"]
+
+
+def test_get_analysis_ticket_returns_ticket_detail(test_client, db_session):
+    analysis = _seed_ticket_analysis(db_session)
+
+    resp = test_client.get(f"/api/analyses/{analysis.id}/tickets/by-key/TEST-2")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["jira_key"] == "TEST-2"
+    assert body["cluster_label"] == "Reporting Problems"
+    assert body["jira_issue_url"] == f"{JIRA_URL}/browse/TEST-2"
+
+
+def test_get_analysis_ticket_not_found(test_client, db_session):
+    analysis = _seed_ticket_analysis(db_session)
+
+    resp = test_client.get(f"/api/analyses/{analysis.id}/tickets/by-key/TEST-999")
     assert resp.status_code == 404
