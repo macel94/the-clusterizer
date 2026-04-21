@@ -83,6 +83,10 @@ Common embedding dimensions:
 
 The repo includes `.devcontainer/devcontainer.json` for local Dev Containers and GitHub Codespaces.
 
+This project works reasonably well in a standard GitHub Codespaces machine with 4 CPU cores and 16 GB of RAM for normal development, test runs, and Compose-based local stack usage.
+
+![alt text](Usage-During-Analysis-Using-gemma4.png)
+
 - Base image: Ubuntu 24.04
 - Tooling: Python 3.12, Node.js 24, Docker-outside-of-Docker
 - Post-create setup creates `backend/.venv`, installs `backend/requirements.txt` and `backend/requirements-test.txt`, and runs `npm install` in `frontend`
