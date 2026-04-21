@@ -1,6 +1,6 @@
 import type { Analysis, AnalysisCreate } from './types';
 
-const BASE = '';
+const BASE = import.meta.env.VITE_API_BASE ?? '';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, init);
@@ -13,7 +13,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function createAnalysis(data: AnalysisCreate): Promise<Analysis> {
-  return request<Analysis>('/api/analyses', {
+  return request<Analysis>('/api/analyses/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -21,7 +21,7 @@ export function createAnalysis(data: AnalysisCreate): Promise<Analysis> {
 }
 
 export function listAnalyses(): Promise<Analysis[]> {
-  return request<Analysis[]>('/api/analyses');
+  return request<Analysis[]>('/api/analyses/');
 }
 
 export function getAnalysis(id: string): Promise<Analysis> {

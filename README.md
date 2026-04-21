@@ -49,7 +49,7 @@ This starts the local development stack:
 
 | Service | Purpose | URL |
 |---|---|---|
-| Frontend | Vite dev server | http://localhost:3000 |
+| Frontend | nginx reverse proxy to the Vite dev server | http://localhost:3000 |
 | Backend API | FastAPI | http://localhost:8000 |
 | API docs | Swagger UI | http://localhost:8000/docs |
 | Ollama | Embeddings + label generation | http://localhost:11434 |
@@ -129,7 +129,11 @@ npm install
 npm run dev
 ```
 
-The frontend runs on http://localhost:3000 and proxies `/api` requests to http://localhost:8000.
+When you run the Vite dev server directly, it listens on http://localhost:5173.
+For standalone frontend development, set `VITE_API_BASE=http://localhost:8000` before starting it so `/api` requests go straight to the backend.
+
+With Docker Compose and Codespaces, open http://localhost:3000 instead.
+That port is served by nginx, which proxies frontend assets to the internal Vite server on `frontend:5173` and `/api` requests to the backend.
 
 ---
 
