@@ -39,6 +39,12 @@ cd the-clusterizer
 docker compose up --build
 ```
 
+If you previously ran an older Postgres image for this repo, remove the stale named volume once before restarting so Compose can initialize the PostgreSQL 18 layout cleanly:
+
+```bash
+docker volume rm the-clusterizer_postgres_data
+```
+
 This starts the local development stack:
 
 | Service | Purpose | URL |
