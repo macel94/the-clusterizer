@@ -1,105 +1,148 @@
 # 🔮 The Clusterizer
 
-Given a Jira instance URL, a PAT and a JQL query filter, this project creates clusters of ticket types using AI so you can discover which categories of issues are impacting you most.
+The Clusterizer pulls Jira issues that match a JQL query, generates embeddings with Ollama, groups them with K-Means, and returns labeled clusters through a FastAPI API and a Vite frontend.
 
 | Layer | Technology |
 |---|---|
-| Frontend | Vanilla TypeScript (Vite, no framework) |
-| Backend | Python · FastAPI |
-| Embeddings | Ollama `/api/embed` (configurable model, default `nomic-embed-text`) |
-| Cluster labels | Ollama `/api/generate` (configurable model, default `gemma3:4b`) |
-| Clustering | scikit-learn · K-Means |
+| Frontend | Vanilla TypeScript with Vite |
+| Backend | Python + FastAPI |
+| Embeddings | Ollama `/api/embed` |
+| Cluster labels | Ollama `/api/generate` |
+| Clustering | scikit-learn K-Means |
 | Database | PostgreSQL 18 + [pgvector](https://github.com/pgvector/pgvector) |
 
 ---
 
 ## How it works
 
-1. You provide a Jira URL, your API token (PAT), and a JQL filter.
-2. The backend fetches all matching tickets via the Jira REST API.
-3. Each ticket's summary + description is converted to a vector embedding via Ollama.
-4. K-Means clustering groups tickets into *N* clusters.
-5. An Ollama LLM generates human-readable cluster labels, with keyword fallback if the LLM is unavailable.
-6. Results are stored in PostgreSQL (embeddings in pgvector, cluster metadata in regular tables).
-7. The frontend polls for completion and displays interactive cluster cards.
+1. You submit a Jira base URL, optional username/email, an API token or PAT, a JQL filter, and a cluster count.
+2. The API creates an analysis record, returns immediately, and runs the analysis pipeline in a background task.
+3. Jira issues are fetched from `/rest/api/3/search`, with automatic fallback to `/rest/api/2/search`.
+4. Each issue is embedded from its summary plus the first 500 characters of its description.
+5. K-Means groups issues into `min(requested_clusters, ticket_count)` clusters.
+6. Ollama generates a short label for each cluster. If that fails, the backend falls back to keyword extraction.
+7. Results are stored in PostgreSQL, and the frontend polls every 3 seconds to render percentages, keywords, and representative tickets.
+
+Notes:
+
+- API tokens and PATs are passed to the background task and are not stored in the database.
+- Analyses move through `pending`, `running`, `completed`, and `failed` states.
+- Jira fetches are capped at 1000 issues per analysis.
 
 ---
 
-## Quick start (Docker Compose)
+## Quick start with Docker Compose
 
 ```bash
-# 1. Clone & enter the repo
 git clone https://github.com/macel94/the-clusterizer.git
 cd the-clusterizer
-
-# 2. Start everything
 docker compose up --build
 ```
 
-| Service | URL |
-|---|---|
-| Frontend | http://localhost:3000 |
-| Backend API | http://localhost:8000 |
-| API docs | http://localhost:8000/docs |
+This starts the local development stack:
+
+| Service | Purpose | URL |
+|---|---|---|
+| Frontend | Vite dev server | http://localhost:3000 |
+| Backend API | FastAPI | http://localhost:8000 |
+| API docs | Swagger UI | http://localhost:8000/docs |
+| Ollama | Embeddings + label generation | http://localhost:11434 |
+| PostgreSQL | Application database | localhost:5432 |
+
+On the first boot, Compose also runs `ollama-model-pull`, which downloads the configured embedding and LLM models into the shared Ollama volume. Analyses will not succeed until those models are available.
+
+---
+
+## Configuration
+
+Backend settings are read from environment variables or `backend/.env`.
+
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://clusterizer:clusterizer@localhost:5432/clusterizer` | SQLAlchemy connection string |
+| `OLLAMA_URL` | `http://localhost:11434` | Base URL for Ollama |
+| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Model used for `/api/embed` |
+| `OLLAMA_EMBED_DIM` | `768` | Embedding dimension; must match the embedding model |
+| `OLLAMA_LLM_MODEL` | `gemma3:4b` | Model used for `/api/generate` |
+
+Common embedding dimensions:
+
+- `nomic-embed-text` -> `768`
+- `mxbai-embed-large` -> `1024`
+- `gemma3:2b` -> `2048`
 
 ---
 
 ## Dev Containers / GitHub Codespaces
 
-This repo now includes a `.devcontainer/devcontainer.json` so you can open it directly in a local Dev Container or in GitHub Codespaces.
+The repo includes `.devcontainer/devcontainer.json` for local Dev Containers and GitHub Codespaces.
 
-- the container installs Python 3.12, Node.js 24 and Docker tooling
-- the initial setup creates `backend/.venv`, installs backend test dependencies, and runs `npm install` in `frontend/`
-- ports `3000`, `8000`, `5432`, `5433`, `11434`, and `18080` are forwarded for the app and the real-Jira test stack
+- Base image: Ubuntu 24.04
+- Tooling: Python 3.12, Node.js 24, Docker-outside-of-Docker
+- Post-create setup creates `backend/.venv`, installs `backend/requirements.txt` and `backend/requirements-test.txt`, and runs `npm install` in `frontend`
+- Forwarded ports: `3000`, `8000`, `11434`, `5432`, `5433`, `18080`
 
-Once the Codespace/container is ready, use the same commands as in the local sections below.
-
-> [!NOTE]
-> The app still needs an Ollama endpoint. In Codespaces, the easiest option is usually to point `OLLAMA_URL` at a reachable external Ollama instance rather than trying to run a large local model inside the Codespace.
+In Codespaces, you still need a reachable Ollama endpoint. In practice that usually means pointing `OLLAMA_URL` at an external Ollama instance.
 
 ---
 
-## Local development (without Docker)
+## Local development
 
 ### Prerequisites
-* Python 3.11+
-* Node.js 20+
-* PostgreSQL 18 with the `pgvector` extension
-* Ollama running locally
+
+- Python 3.11+
+- Node.js 20+
+- PostgreSQL 18 with the `pgvector` extension
+- Ollama with the models you want to use
+- Docker, if you want to run the backend pytest suite locally via Testcontainers
 
 ### Backend
+
 ```bash
 cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-DATABASE_URL=postgresql://user:pass@localhost:5432/clusterizer \
-OLLAMA_URL=http://localhost:11434 \
-  uvicorn app.main:app --reload
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-test.txt
+
+export DATABASE_URL=postgresql://clusterizer:clusterizer@localhost:5432/clusterizer
+export OLLAMA_URL=http://localhost:11434
+export OLLAMA_EMBED_MODEL=nomic-embed-text
+export OLLAMA_EMBED_DIM=768
+export OLLAMA_LLM_MODEL=gemma3:4b
+
+uvicorn app.main:app --reload
 ```
 
+On startup, the backend creates its tables and runs `CREATE EXTENSION IF NOT EXISTS vector`, so the configured PostgreSQL user must be allowed to create that extension.
+
 ### Frontend
+
 ```bash
 cd frontend
 npm install
-npm run dev        # http://localhost:3000
+npm run dev
 ```
+
+The frontend runs on http://localhost:3000 and proxies `/api` requests to http://localhost:8000.
 
 ---
 
 ## Authentication
 
-| Jira flavour | Username field | Token field |
+| Jira flavor | Username field | Token field |
 |---|---|---|
 | Cloud | Email address | [Atlassian API token](https://id.atlassian.com/manage-profile/security/api-tokens) |
-| Server / Data Center | Leave blank | Personal Access Token (Bearer) |
+| Server / Data Center | Leave blank | Personal Access Token sent as Bearer auth |
+
+If `username` is present, the backend uses HTTP basic auth. If it is omitted, the backend sends `Authorization: Bearer <pat>`.
 
 ---
 
 ## JQL examples
 
-```
+```sql
 project = "OPS" AND status != Done
-project in ("PLATFORM","INFRA") AND created >= -30d
+project in ("PLATFORM", "INFRA") AND created >= -30d
 issuetype = Bug AND priority in (High, Critical) AND status != Closed
 ```
 
@@ -107,50 +150,92 @@ issuetype = Bug AND priority in (High, Critical) AND status != Closed
 
 ## API reference
 
+### `POST /api/analyses`
+
+Starts a new analysis.
+
+```json
+{
+  "jira_url": "https://your-domain.atlassian.net",
+  "username": "user@example.com",
+  "pat": "your-token",
+  "jql_filter": "project = TEST",
+  "num_clusters": 5
+}
+```
+
+Rules:
+
+- `username` is optional
+- `num_clusters` must be between `2` and `20`
+
+### Other endpoints
+
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/analyses` | Create and start a new analysis |
-| `GET` | `/api/analyses` | List all analyses |
-| `GET` | `/api/analyses/{id}` | Get analysis + cluster results |
+| `GET` | `/api/analyses` | List analyses ordered by newest first |
+| `GET` | `/api/analyses/{id}` | Get one analysis, including cluster results when complete |
 | `DELETE` | `/api/analyses/{id}` | Delete an analysis |
-| `GET` | `/api/health` | Health check |
+| `GET` | `/api/health` | Return `{ "status": "ok" }` |
+
+Completed analysis responses include:
+
+- cluster labels
+- ticket counts and percentages
+- extracted keywords
+- representative tickets per cluster
+
+---
+
+## Testing
+
+### Backend tests
+
+```bash
+cd backend
+source .venv/bin/activate
+pytest
+```
+
+The backend test suite uses `testcontainers` to start a PostgreSQL 18 + pgvector container, so a local Docker daemon must be available.
+
+### Frontend build
+
+```bash
+cd frontend
+npm run build
+```
 
 ---
 
 ## Real Jira integration tests
 
-The repo includes a **real Jira** docker test stack for end-to-end validation. It starts:
+`docker-compose.test.yml` brings up a full end-to-end test stack:
 
-- PostgreSQL 18 + pgvector for the app
-- PostgreSQL 17 for Jira (supported by Jira 11.3)
-- Jira Software 11.3.4
-- a Playwright-based Jira setup/provisioning container that completes the setup wizard and seeds issues
+- `db`: PostgreSQL 18 + pgvector for the app
+- `jira-db`: PostgreSQL 17.9 for Jira
+- `jira`: Atlassian Jira Software 11.3.4
+- `jira-setup`: Playwright-based setup and issue seeding
+- `backend-test`: pytest runner with real Jira environment variables enabled
 
-### Run the full real-Jira test stack
+### Run the full real Jira stack
 
 ```bash
-# required only for the full Jira provisioning flow
-export JIRA_LICENSE='...your Jira evaluation/developer license...'
+export JIRA_LICENSE='...your Jira evaluation or developer license...'
 docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
 ```
 
-`JIRA_LICENSE` is **not** required for:
+`JIRA_LICENSE` is only required when you want the Playwright setup container to finish provisioning Jira and seed issues end-to-end.
 
-- normal backend tests (`cd backend && pytest`)
-- frontend builds (`cd frontend && npm run build`)
-- the Jira setup smoke test that stops at the license screen
+It is not required for:
 
-It is only required when you want the Playwright setup container to finish provisioning Jira and seed issues end-to-end, because Jira itself refuses to continue without a valid license key.
+- regular backend tests with `cd backend && pytest`
+- frontend builds with `cd frontend && npm run build`
+- Jira setup smoke tests that stop at the license screen
 
-There is no automatic license generation in this repo. Use a temporary Jira Software Data Center evaluation/developer license obtained from Atlassian, then provide it as either:
+There is no automatic license generation in this repo. Use a temporary Jira Software Data Center evaluation or developer license from Atlassian and provide it as either an exported shell variable, a value in a local root `.env` file, or a CI secret named `JIRA_LICENSE`.
 
-- an exported shell variable (`export JIRA_LICENSE='...'`)
-- a value in your local root `.env` file
-- a CI secret exposed as `JIRA_LICENSE`
-
-### Validate the Jira setup automation without a license
-
-This stops right before the license entry step and is useful for smoke-testing the wizard automation locally:
+### Smoke-test the Jira setup automation without a license
 
 ```bash
 export JIRA_SETUP_STOP_AFTER=license
