@@ -19,7 +19,7 @@ The Clusterizer pulls Jira issues that match a JQL query, generates embeddings w
 2. The API creates an analysis record, returns immediately, and runs the analysis pipeline in a background task.
 3. Jira issues are fetched from `/rest/api/3/search`, with automatic fallback to `/rest/api/2/search`.
 4. Each issue is embedded from its summary plus the first 500 characters of its description.
-5. K-Means groups issues into `min(requested_clusters, ticket_count)` clusters.
+5. K-Means groups unit-normalized issue embeddings into `min(requested_clusters, ticket_count)` clusters.
 6. Ollama generates a short label for each cluster. If that fails, the backend falls back to keyword extraction.
 7. Results are stored in PostgreSQL, and the frontend polls every 3 seconds to render percentages, keywords, and representative tickets.
 
@@ -67,15 +67,15 @@ Backend settings are read from environment variables or `backend/.env`.
 |---|---|---|
 | `DATABASE_URL` | `postgresql://clusterizer:clusterizer@localhost:5432/clusterizer` | SQLAlchemy connection string |
 | `OLLAMA_URL` | `http://localhost:11434` | Base URL for Ollama |
-| `OLLAMA_EMBED_MODEL` | `nomic-embed-text` | Model used for `/api/embed` |
+| `OLLAMA_EMBED_MODEL` | `embeddinggemma` | Model used for `/api/embed` |
 | `OLLAMA_EMBED_DIM` | `768` | Embedding dimension; must match the embedding model |
-| `OLLAMA_LLM_MODEL` | `gemma3:4b` | Model used for `/api/generate` |
+| `OLLAMA_LLM_MODEL` | `gemma4:e4b` | Model used for `/api/generate` |
 
 Common embedding dimensions:
 
+- `embeddinggemma` -> `768`
 - `nomic-embed-text` -> `768`
 - `mxbai-embed-large` -> `1024`
-- `gemma3:2b` -> `2048`
 
 ---
 
@@ -112,9 +112,13 @@ pip install -r requirements.txt -r requirements-test.txt
 
 export DATABASE_URL=postgresql://clusterizer:clusterizer@localhost:5432/clusterizer
 export OLLAMA_URL=http://localhost:11434
-export OLLAMA_EMBED_MODEL=nomic-embed-text
+export OLLAMA_EMBED_MODEL=embeddinggemma
 export OLLAMA_EMBED_DIM=768
-export OLLAMA_LLM_MODEL=gemma3:4b
+export OLLAMA_LLM_MODEL=gemma4:e4b
+
+If you already ran analyses with a different embedding model, delete or rerun
+those analyses after switching defaults. Semantic search should compare queries
+against embeddings produced by the same model family.
 
 uvicorn app.main:app --reload
 ```

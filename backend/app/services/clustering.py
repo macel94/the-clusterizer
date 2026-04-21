@@ -26,13 +26,21 @@ _STOP_WORDS = {
 _KMEANS_RANDOM_SEED = 42
 
 
+def _l2_normalize_rows(embeddings: np.ndarray) -> np.ndarray:
+    """Return row-wise unit vectors while leaving zero rows unchanged."""
+    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    safe_norms = np.where(norms == 0, 1.0, norms)
+    return embeddings / safe_norms
+
+
 def cluster_embeddings(
     embeddings: np.ndarray, num_clusters: int
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Run K-means and return (labels, cluster_centers)."""
+    """Run K-means over unit-normalized embeddings and return labels and centers."""
     actual = min(num_clusters, len(embeddings))
-    kmeans = KMeans(n_clusters=actual, random_state=_KMEANS_RANDOM_SEED, n_init=10)
-    labels = kmeans.fit_predict(embeddings)
+    normalized = _l2_normalize_rows(np.asarray(embeddings, dtype=np.float32))
+    kmeans = KMeans(n_clusters=actual, random_state=_KMEANS_RANDOM_SEED, n_init=20)
+    labels = kmeans.fit_predict(normalized)
     return labels, kmeans.cluster_centers_
 
 
@@ -59,7 +67,8 @@ def get_representative_tickets(
     indices = np.where(cluster_labels == cluster_id)[0]
     if len(indices) == 0:
         return []
-    distances = np.linalg.norm(embeddings[indices] - cluster_centers[cluster_id], axis=1)
+    normalized = _l2_normalize_rows(np.asarray(embeddings[indices], dtype=np.float32))
+    distances = np.linalg.norm(normalized - cluster_centers[cluster_id], axis=1)
     closest = indices[np.argsort(distances)[:top_n]]
     return [
         {"key": tickets[i]["key"], "summary": tickets[i]["summary"][:120]}

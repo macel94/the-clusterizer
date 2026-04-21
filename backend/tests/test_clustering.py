@@ -81,6 +81,27 @@ class TestClusterEmbeddings:
         assert all(label == 0 for label in labels)
         assert centers.shape[0] == 1
 
+    def test_groups_by_direction_not_vector_magnitude(self):
+        emb = np.array(
+            [
+                [100.0, 0.0],
+                [90.0, 0.0],
+                [1.0, 0.0],
+                [1.1, 0.0],
+                [0.0, 1.0],
+                [0.0, 1.1],
+            ],
+            dtype=np.float32,
+        )
+
+        labels, _ = cluster_embeddings(emb, 2)
+
+        x_axis_labels = set(labels[:4].tolist())
+        y_axis_labels = set(labels[4:].tolist())
+        assert len(x_axis_labels) == 1
+        assert len(y_axis_labels) == 1
+        assert x_axis_labels != y_axis_labels
+
 
 # ---------------------------------------------------------------------------
 # extract_keywords

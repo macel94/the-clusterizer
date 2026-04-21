@@ -9,15 +9,15 @@ class Settings(BaseSettings):
 
     # Ollama configuration
     OLLAMA_URL: str = "http://localhost:11434"
-    # Embedding model (any Ollama model that supports /api/embed).
-    # Small Gemma-based options: "gemma3:2b"  General-purpose: "nomic-embed-text"
-    OLLAMA_EMBED_MODEL: str = "nomic-embed-text"
+    # EmbeddingGemma is the default embedding model because it is optimized for
+    # retrieval, semantic similarity, and clustering workloads.
+    OLLAMA_EMBED_MODEL: str = "embeddinggemma"
     # Vector dimension MUST match the embedding model output.
-    # nomic-embed-text → 768  |  mxbai-embed-large → 1024  |  gemma3:2b → 2048
+    # embeddinggemma defaults to 768 dimensions in this app.
     OLLAMA_EMBED_DIM: int = 768
     # LLM used to generate human-readable cluster labels.
-    # "gemma3:4b" is fast and cheap locally (≈4 GB RAM).
-    OLLAMA_LLM_MODEL: str = "gemma3:4b"
+    # gemma4:e4b keeps the smaller Gemma 4 edge variant explicit for local use.
+    OLLAMA_LLM_MODEL: str = "gemma4:e4b"
 
 
 settings = Settings()
