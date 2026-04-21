@@ -81,7 +81,7 @@ function buildShell(): string {
               <input id="jql_filter" type="text" placeholder='project = "MY-PROJ" AND status != Done' required />
             </div>
             <div class="form-group">
-              <label for="num_clusters">Number of Clusters (2–20)</label>
+              <label for="num_clusters">Maximum Clusters (2–20)</label>
               <input id="num_clusters" type="number" min="2" max="20" value="5" required />
             </div>
             <div id="form-error" class="error-box" style="display:none;margin-bottom:.75rem"></div>
@@ -557,7 +557,7 @@ async function handleFormSubmit(form: HTMLFormElement): Promise<void> {
   if (!pat) { showFormError(errorBox, 'API token / PAT is required.'); return; }
   if (!jqlFilter) { showFormError(errorBox, 'JQL filter is required.'); return; }
   if (isNaN(numClusters) || numClusters < 2 || numClusters > 20) {
-    showFormError(errorBox, 'Number of clusters must be between 2 and 20.');
+    showFormError(errorBox, 'Maximum clusters must be between 2 and 20.');
     return;
   }
 

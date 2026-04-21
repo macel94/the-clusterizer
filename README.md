@@ -15,11 +15,11 @@ The Clusterizer pulls Jira issues that match a JQL query, generates embeddings w
 
 ## How it works
 
-1. You submit a Jira base URL, optional username/email, an API token or PAT, a JQL filter, and a cluster count.
+1. You submit a Jira base URL, optional username/email, an API token or PAT, a JQL filter, and a maximum cluster count.
 2. The API creates an analysis record, returns immediately, and runs the analysis pipeline in a background task.
 3. Jira issues are fetched from `/rest/api/3/search`, with automatic fallback to `/rest/api/2/search`.
 4. Each issue is embedded from its summary plus the first 500 characters of its description.
-5. K-Means groups unit-normalized issue embeddings into `min(requested_clusters, ticket_count)` clusters.
+5. K-Means tries cluster counts from `2` up to `min(requested_clusters, ticket_count)` and keeps the best silhouette score, so the requested value acts as a ceiling instead of a forced exact split.
 6. Ollama generates a short label for each cluster. If that fails, the backend falls back to keyword extraction.
 7. Results are stored in PostgreSQL, and the frontend polls every 3 seconds to render percentages, keywords, and representative tickets.
 
@@ -185,7 +185,7 @@ Starts a new analysis.
 Rules:
 
 - `username` is optional
-- `num_clusters` must be between `2` and `20`
+- `num_clusters` must be between `2` and `20` and is treated as the maximum number of clusters to consider
 
 ### Other endpoints
 

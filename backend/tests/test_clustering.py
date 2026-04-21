@@ -62,6 +62,12 @@ class TestClusterEmbeddings:
         assert len(group_b_labels) == 1
         assert group_a_labels != group_b_labels
 
+    def test_requested_cluster_count_is_treated_as_upper_bound(self):
+        emb = _make_two_group_embeddings(n_per_group=15)
+        labels, centers = cluster_embeddings(emb, 6)
+        assert centers.shape[0] == 2
+        assert len(set(labels.tolist())) == 2
+
     def test_num_clusters_capped_at_sample_count(self):
         emb = np.random.default_rng(2).standard_normal((3, 8)).astype(np.float32)
         labels, centers = cluster_embeddings(emb, num_clusters=10)
@@ -142,6 +148,15 @@ class TestExtractKeywords:
         texts = ["Login FAILED", "login error", "LOGIN timeout"]
         keywords = extract_keywords(texts, top_n=5)
         assert "login" in keywords
+
+    def test_url_noise_excluded(self):
+        texts = [
+            "https portal login issue on example.com",
+            "www.example.com login timeout over https",
+        ]
+        keywords = extract_keywords(texts, top_n=10)
+        for stop in ("https", "www", "com"):
+            assert stop not in keywords
 
 
 # ---------------------------------------------------------------------------

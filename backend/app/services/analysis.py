@@ -153,6 +153,13 @@ def run_analysis(
         logger.info("[%s] Clustering …", analysis_id)
         actual_clusters = min(num_clusters, len(raw_tickets))
         cluster_labels, cluster_centers = cluster_embeddings(embeddings, actual_clusters)
+        selected_clusters = len(cluster_centers)
+        logger.info(
+            "[%s] Selected %d clusters (requested max %d).",
+            analysis_id,
+            selected_clusters,
+            actual_clusters,
+        )
 
         for i, obj in enumerate(ticket_objects):
             obj.cluster_id = int(cluster_labels[i])
@@ -163,26 +170,23 @@ def run_analysis(
             analysis,
             status_detail="Labelling clusters",
             progress_current=0,
-            progress_total=actual_clusters,
+            progress_total=selected_clusters,
             progress_unit="clusters",
         )
 
         # ── 7. Build cluster summaries ───────────────────────────────────────
         logger.info("[%s] Building cluster summaries …", analysis_id)
-        for cid in range(actual_clusters):
+        for cid in range(selected_clusters):
             mask = cluster_labels == cid
             cluster_tickets = [raw_tickets[i] for i in range(len(raw_tickets)) if mask[i]]
             if not cluster_tickets:
                 continue
 
-            cluster_texts = [
-                f"{t['summary']} {(t.get('description') or '')[:200]}"
-                for t in cluster_tickets
-            ]
-            keywords = extract_keywords(cluster_texts, top_n=5)
+            cluster_summaries = [t["summary"] for t in cluster_tickets]
+            keywords = extract_keywords(cluster_summaries, top_n=5)
             # Ask the LLM for a descriptive label; fall back to keywords if unavailable.
             try:
-                label = generate_cluster_label([t["summary"] for t in cluster_tickets])
+                label = generate_cluster_label(cluster_summaries)
             except Exception as llm_exc:
                 logger.warning(
                     "[%s] LLM labelling failed for cluster %d, using keywords: %s",
@@ -212,8 +216,8 @@ def run_analysis(
             analysis,
             status="completed",
             status_detail="Analysis completed",
-            progress_current=actual_clusters,
-            progress_total=actual_clusters,
+            progress_current=selected_clusters,
+            progress_total=selected_clusters,
             progress_unit="clusters",
             total_tickets=len(raw_tickets),
             completed_at=datetime.now(UTC),

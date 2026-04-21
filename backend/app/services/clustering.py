@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 
 from .ollama import post_ollama_json
 
@@ -21,10 +22,12 @@ _STOP_WORDS = {
     "our", "you", "your", "my", "me", "he", "she", "they", "them", "their",
     "i", "his", "her", "any", "what", "there", "here", "get", "got",
     "using", "use", "used", "new", "need", "needs", "please", "per",
+    "http", "https", "www", "com", "org", "net",
 }
 
 # Fixed random seed for reproducible cluster results across runs
 _KMEANS_RANDOM_SEED = 42
+_MAX_SILHOUETTE_SAMPLE_SIZE = 300
 
 
 def _l2_normalize_rows(embeddings: np.ndarray) -> np.ndarray:
@@ -34,15 +37,47 @@ def _l2_normalize_rows(embeddings: np.ndarray) -> np.ndarray:
     return embeddings / safe_norms
 
 
+def _fit_kmeans(normalized: np.ndarray, num_clusters: int) -> Tuple[np.ndarray, np.ndarray]:
+    kmeans = KMeans(n_clusters=num_clusters, random_state=_KMEANS_RANDOM_SEED, n_init=20)
+    labels = kmeans.fit_predict(normalized)
+    return labels, kmeans.cluster_centers_
+
+
+def _choose_cluster_count(normalized: np.ndarray, max_clusters: int) -> int:
+    actual_max = min(max_clusters, len(normalized))
+    if actual_max <= 1 or len(normalized) <= 3:
+        return actual_max
+
+    best_candidate = actual_max if actual_max == 2 else None
+    best_score = None
+    score_kwargs = {"metric": "euclidean"}
+    if len(normalized) > _MAX_SILHOUETTE_SAMPLE_SIZE:
+        score_kwargs["sample_size"] = _MAX_SILHOUETTE_SAMPLE_SIZE
+        score_kwargs["random_state"] = _KMEANS_RANDOM_SEED
+
+    upper_bound = min(actual_max, len(normalized) - 1)
+    for candidate in range(2, upper_bound + 1):
+        labels, _ = _fit_kmeans(normalized, candidate)
+        if np.unique(labels).size < 2:
+            continue
+        score = float(silhouette_score(normalized, labels, **score_kwargs))
+        if best_score is None or score > best_score + 1e-9:
+            best_candidate = candidate
+            best_score = score
+        elif abs(score - best_score) <= 1e-9 and best_candidate is not None:
+            best_candidate = min(best_candidate, candidate)
+
+    return best_candidate if best_candidate is not None else actual_max
+
+
 def cluster_embeddings(
     embeddings: np.ndarray, num_clusters: int
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Run K-means over unit-normalized embeddings and return labels and centers."""
+    """Run K-means over unit-normalized embeddings using up to ``num_clusters`` groups."""
     actual = min(num_clusters, len(embeddings))
     normalized = _l2_normalize_rows(np.asarray(embeddings, dtype=np.float32))
-    kmeans = KMeans(n_clusters=actual, random_state=_KMEANS_RANDOM_SEED, n_init=20)
-    labels = kmeans.fit_predict(normalized)
-    return labels, kmeans.cluster_centers_
+    selected = _choose_cluster_count(normalized, actual)
+    return _fit_kmeans(normalized, selected)
 
 
 def extract_keywords(texts: List[str], top_n: int = 5) -> List[str]:
