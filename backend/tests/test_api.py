@@ -16,6 +16,11 @@ from tests.generators import generate_tickets, generate_jira_api_response
 JIRA_URL = "https://jira.test"
 
 
+@pytest.fixture(autouse=True)
+def _disable_ollama_retry_sleep(monkeypatch):
+    monkeypatch.setattr("app.services.ollama.time.sleep", lambda *_args, **_kwargs: None)
+
+
 # ---------------------------------------------------------------------------
 # Health
 # ---------------------------------------------------------------------------
@@ -110,6 +115,10 @@ def test_create_analysis_returns_201(test_client):
     assert body["jql_filter"] == "project = TEST"
     assert body["num_clusters"] == 5
     assert body["status"] in ("pending", "running", "completed")
+    assert "status_detail" in body
+    assert isinstance(body["progress_current"], int)
+    assert isinstance(body["progress_total"], int)
+    assert isinstance(body["progress_unit"], str)
     # PAT must never appear in the response
     assert "pat" not in body
 
@@ -187,7 +196,12 @@ def test_get_analysis_returns_analysis(test_client):
 
     get_resp = test_client.get(f"/api/analyses/{analysis_id}")
     assert get_resp.status_code == 200
-    assert get_resp.json()["id"] == analysis_id
+    body = get_resp.json()
+    assert body["id"] == analysis_id
+    assert "status_detail" in body
+    assert "progress_current" in body
+    assert "progress_total" in body
+    assert "progress_unit" in body
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +264,10 @@ def _seed_ticket_analysis(db_session):
         jql_filter="project = TEST",
         num_clusters=2,
         status="completed",
+        status_detail="Analysis completed",
+        progress_current=2,
+        progress_total=2,
+        progress_unit="clusters",
         total_tickets=2,
     )
     db_session.add(analysis)
@@ -311,6 +329,19 @@ def test_list_analysis_tickets_returns_ticket_page(test_client, db_session):
     assert body["query"] is None
     assert [item["jira_key"] for item in body["items"]] == ["TEST-1", "TEST-2"]
     assert body["items"][0]["cluster_label"] == "Authentication Issues"
+
+
+def test_get_analysis_includes_progress_fields(test_client, db_session):
+    analysis = _seed_ticket_analysis(db_session)
+
+    resp = test_client.get(f"/api/analyses/{analysis.id}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "completed"
+    assert body["status_detail"] == "Analysis completed"
+    assert body["progress_current"] == 2
+    assert body["progress_total"] == 2
+    assert body["progress_unit"] == "clusters"
 
 
 def test_search_analysis_tickets_returns_semantic_matches(test_client, db_session, monkeypatch):

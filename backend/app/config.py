@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     # LLM used to generate human-readable cluster labels.
     # gemma4:e4b keeps the smaller Gemma 4 edge variant explicit for local use.
     OLLAMA_LLM_MODEL: str = "gemma4:e4b"
+    OLLAMA_RETRY_ATTEMPTS: int = 3
+    OLLAMA_RETRY_INITIAL_BACKOFF_SECONDS: float = 1.0
+    OLLAMA_RETRY_BACKOFF_MULTIPLIER: float = 2.0
+    OLLAMA_RETRY_MAX_BACKOFF_SECONDS: float = 8.0
+    OLLAMA_EMBED_BATCH_SIZE: int = 64
 
 
 settings = Settings()

@@ -30,6 +30,10 @@ export interface Analysis {
   jql_filter: string;
   num_clusters: number;
   status: AnalysisStatus;
+  status_detail: string;
+  progress_current: number;
+  progress_total: number;
+  progress_unit: string;
   error_message?: string;
   total_tickets: number;
   created_at: string;

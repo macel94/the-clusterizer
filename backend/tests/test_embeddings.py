@@ -70,13 +70,31 @@ def test_generate_embeddings_sends_correct_payload():
 # ---------------------------------------------------------------------------
 
 @rsps_lib.activate
-def test_generate_embeddings_raises_on_http_error():
+def test_generate_embeddings_raises_on_http_error(monkeypatch):
     texts = ["some text"]
     rsps_lib.add(rsps_lib.POST, OLLAMA_EMBED_URL, status=500)
+    monkeypatch.setattr("app.services.ollama.time.sleep", lambda *_args, **_kwargs: None)
 
     from app.services.embeddings import generate_embeddings
     with pytest.raises(Exception):
         generate_embeddings(texts)
+
+
+@rsps_lib.activate
+def test_generate_embeddings_retries_transient_http_error(monkeypatch):
+    texts = ["ticket A", "ticket B"]
+    rsps_lib.add(rsps_lib.POST, OLLAMA_EMBED_URL, status=503)
+    rsps_lib.add(rsps_lib.POST, OLLAMA_EMBED_URL, json=_make_payload(2), status=200)
+
+    delays: list[float] = []
+    monkeypatch.setattr("app.services.ollama.time.sleep", lambda seconds: delays.append(seconds))
+
+    from app.services.embeddings import generate_embeddings
+
+    result = generate_embeddings(texts)
+
+    assert result.shape == (2, settings.OLLAMA_EMBED_DIM)
+    assert delays == [settings.OLLAMA_RETRY_INITIAL_BACKOFF_SECONDS]
 
 
 @rsps_lib.activate

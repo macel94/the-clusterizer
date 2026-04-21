@@ -3,8 +3,9 @@ from collections import Counter
 from typing import Dict, List, Tuple
 
 import numpy as np
-import requests as http
 from sklearn.cluster import KMeans
+
+from .ollama import post_ollama_json
 
 _STOP_WORDS = {
     "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
@@ -95,13 +96,13 @@ def generate_cluster_label(ticket_summaries: List[str]) -> str:
         + "\n".join(f"- {s}" for s in sample)
         + "\n\nLabel:"
     )
-    resp = http.post(
-        f"{settings.OLLAMA_URL}/api/generate",
-        json={"model": settings.OLLAMA_LLM_MODEL, "prompt": prompt, "stream": False},
+    data = post_ollama_json(
+        "/api/generate",
+        {"model": settings.OLLAMA_LLM_MODEL, "prompt": prompt, "stream": False},
         timeout=60,
+        operation="cluster label generation",
     )
-    resp.raise_for_status()
-    label = resp.json().get("response", "").strip()
+    label = data.get("response", "").strip()
     if not label:
         raise ValueError("Ollama returned an empty label")
     # Trim to a single line in case the model adds extras

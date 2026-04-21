@@ -21,10 +21,12 @@ _TICKETS = generate_tickets()          # 40 tickets across 5 themes
 _N_TICKETS = len(_TICKETS)
 
 
-def _fake_embeddings(texts):
+def _fake_embeddings(texts, progress_callback=None):
     """Return deterministic random vectors matching the configured embed dim."""
     from app.config import settings
     rng = np.random.default_rng(seed=42)
+    if progress_callback is not None:
+        progress_callback(len(texts), len(texts))
     return rng.standard_normal((len(texts), settings.OLLAMA_EMBED_DIM)).astype(np.float32)
 
 
@@ -74,6 +76,9 @@ def test_full_pipeline_completed(mock_embed, test_engine, db_session):
     assert refreshed.status == "completed", (
         f"Expected completed, got {refreshed.status}: {refreshed.error_message}"
     )
+    assert refreshed.status_detail == "Analysis completed"
+    assert refreshed.progress_current == refreshed.progress_total == 5
+    assert refreshed.progress_unit == "clusters"
     assert refreshed.total_tickets == _N_TICKETS
     assert refreshed.completed_at is not None
 
@@ -152,6 +157,53 @@ def test_pipeline_falls_back_to_keywords_when_llm_unavailable(
     clusters = db_session.query(Cluster).filter_by(analysis_id=analysis.id).all()
     for c in clusters:
         assert c.label  # keyword-derived labels still produced
+
+
+@rsps_lib.activate
+@patch("app.services.analysis.generate_embeddings", side_effect=_fake_embeddings)
+def test_pipeline_updates_live_cluster_progress(mock_embed, test_engine, db_session):
+    from sqlalchemy.orm import sessionmaker
+    from app.models import Analysis
+    from app.services.analysis import run_analysis
+
+    rsps_lib.add(
+        rsps_lib.GET,
+        f"{JIRA_URL}/rest/api/3/search",
+        json=generate_jira_api_response(_TICKETS),
+        status=200,
+    )
+
+    analysis = Analysis(
+        id=uuid.uuid4(), jira_url=JIRA_URL, jql_filter="project = TEST",
+        num_clusters=5, status="pending", total_tickets=0,
+    )
+    db_session.add(analysis)
+    db_session.commit()
+
+    TestSession = sessionmaker(bind=test_engine)
+    progress_snapshots = []
+
+    def fake_generate_cluster_label(ticket_summaries):
+        with TestSession() as observer:
+            row = observer.query(Analysis).filter_by(id=analysis.id).first()
+            progress_snapshots.append(
+                (row.status_detail, row.progress_current, row.progress_total, row.progress_unit)
+            )
+        return "Working label"
+
+    with patch("app.database.SessionLocal", TestSession), patch(
+        "app.services.analysis.generate_cluster_label",
+        side_effect=fake_generate_cluster_label,
+    ):
+        run_analysis(str(analysis.id), JIRA_URL, None, "test-pat", "project = TEST", 5)
+
+    db_session.expire_all()
+    refreshed = db_session.query(Analysis).filter_by(id=analysis.id).first()
+    assert progress_snapshots[0] == ("Labelling clusters", 0, 5, "clusters")
+    assert [snapshot[1] for snapshot in progress_snapshots] == [0, 1, 2, 3, 4]
+    assert refreshed.status == "completed"
+    assert refreshed.status_detail == "Analysis completed"
+    assert refreshed.progress_current == refreshed.progress_total == 5
 
 
 # ---------------------------------------------------------------------------

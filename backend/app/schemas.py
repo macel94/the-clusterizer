@@ -38,6 +38,10 @@ class AnalysisResponse(BaseModel):
     jql_filter: str
     num_clusters: int
     status: str
+    status_detail: str
+    progress_current: int
+    progress_total: int
+    progress_unit: str
     error_message: Optional[str] = None
     total_tickets: int
     created_at: datetime

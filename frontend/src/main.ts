@@ -179,6 +179,9 @@ function renderAnalysisList(): void {
 function renderAnalysisItem(a: Analysis): string {
   const date = new Date(a.created_at).toLocaleString();
   const host = safeHostname(a.jira_url);
+  const progressLine = a.status === 'pending' || a.status === 'running'
+    ? formatAnalysisProgressLine(a)
+    : null;
   return `
     <div class="analysis-item${selectedId === a.id ? ' active' : ''}" data-id="${a.id}">
       <div class="analysis-item-header">
@@ -186,6 +189,7 @@ function renderAnalysisItem(a: Analysis): string {
         <span class="badge badge-${a.status}">${statusLabel(a.status)}</span>
       </div>
       <div class="analysis-item-jql" title="${esc(a.jql_filter)}">${esc(a.jql_filter)}</div>
+      ${progressLine ? `<div class="analysis-item-progress">${esc(progressLine)}</div>` : ''}
       <div class="analysis-item-meta">
         <span class="analysis-item-date">${date}</span>
         <button class="btn-danger delete-btn" data-id="${a.id}">Delete</button>
@@ -241,12 +245,33 @@ function renderResults(analysis: Analysis | null): void {
   }
 
   if (analysis.status === 'pending' || analysis.status === 'running') {
+    const headline = analysis.status === 'pending' ? 'Analysis queued…' : 'Analysis in progress…';
+    const progressSummary = formatAnalysisProgressSummary(analysis);
+    const progressPercent = calculateAnalysisProgressPercent(analysis);
+    const ticketSummary = analysis.total_tickets > 0
+      ? `${analysis.total_tickets} ticket${analysis.total_tickets === 1 ? '' : 's'} fetched from Jira`
+      : 'Waiting for Jira to return tickets';
     panel.innerHTML = `
       <div class="card running-state">
-        <div class="spinner"></div>
-        <h3>Analysis in progress…</h3>
-        <p>Fetching Jira tickets, generating embeddings, and clustering.</p>
-        <p>This may take up to a minute depending on the number of tickets.</p>
+        <span class="spinner"></span>
+        <h3>${headline}</h3>
+        <div class="running-stage">${esc(analysis.status_detail)}</div>
+        ${progressSummary
+          ? `<div class="running-progress">
+              <div class="running-progress-meta">
+                <span>${esc(progressSummary)}</span>
+                ${progressPercent !== null ? `<span>${progressPercent}%</span>` : ''}
+              </div>
+              ${progressPercent !== null
+                ? `<div class="running-progress-bar"><div class="running-progress-fill" style="width:${progressPercent}%"></div></div>`
+                : ''}
+            </div>`
+          : ''}
+        <div class="running-meta">
+          <span>${esc(safeHostname(analysis.jira_url))}</span>
+          <span>${esc(ticketSummary)}</span>
+        </div>
+        <p>Polling the backend every 3 seconds for stage and count updates.</p>
       </div>`;
     return;
   }
@@ -737,6 +762,35 @@ function statusLabel(s: string): string {
     completed: '✅ Done', failed: '❌ Failed',
   };
   return map[s] ?? s;
+}
+
+function formatAnalysisProgressSummary(analysis: Analysis): string | null {
+  if (analysis.progress_total > 0) {
+    const current = Math.max(0, Math.min(analysis.progress_current, analysis.progress_total));
+    return `${current} / ${analysis.progress_total} ${analysis.progress_unit}`;
+  }
+
+  if (analysis.total_tickets > 0) {
+    return `${analysis.total_tickets} ticket${analysis.total_tickets === 1 ? '' : 's'} fetched`;
+  }
+
+  return null;
+}
+
+function formatAnalysisProgressLine(analysis: Analysis): string | null {
+  const summary = formatAnalysisProgressSummary(analysis);
+  if (summary) {
+    return `${analysis.status_detail} · ${summary}`;
+  }
+  return analysis.status_detail;
+}
+
+function calculateAnalysisProgressPercent(analysis: Analysis): number | null {
+  if (analysis.progress_total <= 0) return null;
+  return Math.max(
+    0,
+    Math.min(100, Math.round((analysis.progress_current / analysis.progress_total) * 100)),
+  );
 }
 
 function formatDuration(start: string, end: string): string {

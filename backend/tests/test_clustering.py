@@ -219,10 +219,29 @@ class TestGenerateClusterLabel:
         assert label == "Slow API Responses"
 
     @rsps_lib.activate
-    def test_raises_on_http_error(self):
+    def test_raises_on_http_error(self, monkeypatch):
         rsps_lib.add(rsps_lib.POST, self._OLLAMA_GENERATE_URL, status=503)
+        monkeypatch.setattr("app.services.ollama.time.sleep", lambda *_args, **_kwargs: None)
         with pytest.raises(Exception):
             generate_cluster_label(["some ticket"])
+
+    @rsps_lib.activate
+    def test_retries_transient_http_error(self, monkeypatch):
+        rsps_lib.add(rsps_lib.POST, self._OLLAMA_GENERATE_URL, status=503)
+        rsps_lib.add(
+            rsps_lib.POST,
+            self._OLLAMA_GENERATE_URL,
+            json={"response": "Release Coordination Work", "done": True},
+            status=200,
+        )
+
+        delays: list[float] = []
+        monkeypatch.setattr("app.services.ollama.time.sleep", lambda seconds: delays.append(seconds))
+
+        label = generate_cluster_label(["Coordinate the release checklist"])
+
+        assert label == "Release Coordination Work"
+        assert delays == [self._cfg.OLLAMA_RETRY_INITIAL_BACKOFF_SECONDS]
 
     @rsps_lib.activate
     def test_raises_on_empty_response(self):
