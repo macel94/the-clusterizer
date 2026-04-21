@@ -32,8 +32,8 @@ def test_fetch_tickets_returns_all_tickets():
     payload = generate_jira_api_response(tickets)
 
     rsps_lib.add(
-        rsps_lib.GET,
-        f"{JIRA_URL}/rest/api/3/search",
+        rsps_lib.POST,
+        f"{JIRA_URL}/rest/api/3/search/jql",
         json=payload,
         status=200,
     )
@@ -50,8 +50,8 @@ def test_fetch_tickets_fields_mapped_correctly():
     payload = generate_jira_api_response(tickets)
 
     rsps_lib.add(
-        rsps_lib.GET,
-        f"{JIRA_URL}/rest/api/3/search",
+        rsps_lib.POST,
+        f"{JIRA_URL}/rest/api/3/search/jql",
         json=payload,
         status=200,
     )
@@ -67,22 +67,25 @@ def test_fetch_tickets_fields_mapped_correctly():
 
 
 # ---------------------------------------------------------------------------
-# API version fallback (v3 → v2)
+# Cloud search fallback
 # ---------------------------------------------------------------------------
 
 @rsps_lib.activate
-def test_fetch_tickets_falls_back_to_api_v2():
-    """If v3 endpoint returns 404, the client should retry against v2."""
+def test_fetch_tickets_falls_back_to_legacy_search_when_cloud_search_unavailable():
+    """If the cloud search endpoint is unavailable, retry against legacy search endpoints."""
     tickets = generate_tickets()[:5]
     payload = generate_jira_api_response(tickets)
 
-    # v3 returns 404
+    rsps_lib.add(
+        rsps_lib.POST,
+        f"{JIRA_URL}/rest/api/3/search/jql",
+        status=404,
+    )
     rsps_lib.add(
         rsps_lib.GET,
         f"{JIRA_URL}/rest/api/3/search",
-        status=404,
+        status=410,
     )
-    # v2 succeeds
     rsps_lib.add(
         rsps_lib.GET,
         f"{JIRA_URL}/rest/api/2/search",
@@ -106,16 +109,20 @@ def test_fetch_tickets_paginates_correctly():
     page1_tickets = all_tickets[:20]
     page2_tickets = all_tickets[20:]
 
-    page1 = generate_jira_api_response(page1_tickets, start_at=0)
-    page1["total"] = len(all_tickets)
-    page1["maxResults"] = 20
+    page1 = {
+        "issues": generate_jira_api_response(page1_tickets, start_at=0)["issues"],
+        "isLast": False,
+        "nextPageToken": "page-2",
+    }
 
-    page2 = generate_jira_api_response(page2_tickets, start_at=20)
-    page2["total"] = len(all_tickets)
-    page2["maxResults"] = 20
+    page2 = {
+        "issues": generate_jira_api_response(page2_tickets, start_at=20)["issues"],
+        "isLast": True,
+        "nextPageToken": None,
+    }
 
-    rsps_lib.add(rsps_lib.GET, f"{JIRA_URL}/rest/api/3/search", json=page1, status=200)
-    rsps_lib.add(rsps_lib.GET, f"{JIRA_URL}/rest/api/3/search", json=page2, status=200)
+    rsps_lib.add(rsps_lib.POST, f"{JIRA_URL}/rest/api/3/search/jql", json=page1, status=200)
+    rsps_lib.add(rsps_lib.POST, f"{JIRA_URL}/rest/api/3/search/jql", json=page2, status=200)
 
     svc = _make_service()
     result = svc.fetch_tickets("project = TEST", max_results=1000)
@@ -127,9 +134,9 @@ def test_fetch_tickets_paginates_correctly():
 def test_fetch_tickets_stops_when_no_issues_returned():
     """Empty issues list should terminate pagination early."""
     rsps_lib.add(
-        rsps_lib.GET,
-        f"{JIRA_URL}/rest/api/3/search",
-        json={"total": 100, "startAt": 0, "maxResults": 0, "issues": []},
+        rsps_lib.POST,
+        f"{JIRA_URL}/rest/api/3/search/jql",
+        json={"isLast": True, "nextPageToken": None, "issues": []},
         status=200,
     )
 
@@ -144,8 +151,7 @@ def test_fetch_tickets_stops_when_no_issues_returned():
 
 @rsps_lib.activate
 def test_raises_auth_error_on_401():
-    rsps_lib.add(rsps_lib.GET, f"{JIRA_URL}/rest/api/3/search", status=401)
-    rsps_lib.add(rsps_lib.GET, f"{JIRA_URL}/rest/api/2/search", status=401)
+    rsps_lib.add(rsps_lib.POST, f"{JIRA_URL}/rest/api/3/search/jql", status=401)
 
     svc = _make_service()
     with pytest.raises(JiraAuthError, match="Authentication failed"):
@@ -154,8 +160,7 @@ def test_raises_auth_error_on_401():
 
 @rsps_lib.activate
 def test_raises_auth_error_on_403():
-    rsps_lib.add(rsps_lib.GET, f"{JIRA_URL}/rest/api/3/search", status=403)
-    rsps_lib.add(rsps_lib.GET, f"{JIRA_URL}/rest/api/2/search", status=403)
+    rsps_lib.add(rsps_lib.POST, f"{JIRA_URL}/rest/api/3/search/jql", status=403)
 
     svc = _make_service()
     with pytest.raises(JiraAuthError, match="Access forbidden"):
@@ -171,8 +176,8 @@ def test_raises_connection_error_when_host_unreachable():
     import requests as req_lib
 
     rsps_lib.add(
-        rsps_lib.GET,
-        f"{JIRA_URL}/rest/api/3/search",
+        rsps_lib.POST,
+        f"{JIRA_URL}/rest/api/3/search/jql",
         body=req_lib.exceptions.ConnectionError("Connection refused"),
     )
 

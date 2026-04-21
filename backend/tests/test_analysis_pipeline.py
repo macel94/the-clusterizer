@@ -50,7 +50,7 @@ def test_full_pipeline_completed(mock_embed, test_engine, db_session):
     from app.models import Analysis
     from app.services.analysis import run_analysis
 
-    rsps_lib.add(rsps_lib.GET, f"{JIRA_URL}/rest/api/3/search",
+    rsps_lib.add(rsps_lib.POST, f"{JIRA_URL}/rest/api/3/search/jql",
                  json=generate_jira_api_response(_TICKETS), status=200)
     # Register one LLM mock per cluster (up to 5)
     for _ in range(5):
@@ -165,8 +165,7 @@ def test_pipeline_fails_gracefully_on_auth_error(test_engine, db_session):
     from app.models import Analysis
     from app.services.analysis import run_analysis
 
-    rsps_lib.add(rsps_lib.GET, f"{JIRA_URL}/rest/api/3/search", status=401)
-    rsps_lib.add(rsps_lib.GET, f"{JIRA_URL}/rest/api/2/search", status=401)
+    rsps_lib.add(rsps_lib.POST, f"{JIRA_URL}/rest/api/3/search/jql", status=401)
 
     analysis = Analysis(
         id=uuid.uuid4(), jira_url=JIRA_URL, jql_filter="project = TEST",
