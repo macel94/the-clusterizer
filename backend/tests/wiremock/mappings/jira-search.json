@@ -1,0 +1,699 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/rest/api/(2|3)/search"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "total": 40,
+      "startAt": 0,
+      "maxResults": 40,
+      "issues": [
+        {
+          "id": "69d3ceea-a917-4419-a0d5-48019543ee1b",
+          "key": "AUTH-1",
+          "fields": {
+            "summary": "Login page returns 500 for passwords with special characters",
+            "description": "Users report that logging in with passwords containing @, #, or ! triggers a 500 error. Stack-trace shows NullPointerException in AuthController.login().",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "High"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "d0bdd724-5563-4834-9f5b-be8988c930ff",
+          "key": "AUTH-2",
+          "fields": {
+            "summary": "SSO redirect loop after SAML assertion",
+            "description": "After successful SAML assertion, the service provider redirects the user back to the identity provider in an infinite loop. Seen with Okta and Azure AD.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "High"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "2269f910-18b1-4e65-b140-88c550c3122f",
+          "key": "AUTH-3",
+          "fields": {
+            "summary": "Remember-me token not invalidated on logout",
+            "description": "The persistent authentication cookie is not cleared server-side when the user logs out. Revisiting the site within the token TTL re-authenticates without prompting.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "High"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "4904cfff-0371-4c15-9ba8-7b062471e1f5",
+          "key": "AUTH-4",
+          "fields": {
+            "summary": "Password reset email not delivered when username has uppercase letters",
+            "description": "The password-reset flow lowercases the stored email before querying but not the lookup key, causing a miss and no email delivery.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "High"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "f8203dfd-618e-4691-b43f-f1331ad6bdf4",
+          "key": "AUTH-5",
+          "fields": {
+            "summary": "Session expires too quickly under heavy load",
+            "description": "Under high concurrency the session store TTL renewal is skipped, causing users to be logged out after ~5 minutes instead of the configured 30 minutes.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "High"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "236be8e9-b664-4441-a925-e10b2b0deff9",
+          "key": "AUTH-6",
+          "fields": {
+            "summary": "OAuth2 PKCE flow fails on Safari 17",
+            "description": "The code-verifier is not correctly percent-encoded on Safari 17. Authorization code exchange returns invalid_grant.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "High"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "6df7193a-cc60-4de3-92c9-eba31e4a0cb3",
+          "key": "AUTH-7",
+          "fields": {
+            "summary": "Two-factor authentication bypass via direct URL access",
+            "description": "A user who has 2FA enabled can skip the verification step by navigating directly to the post-login URL. The middleware guard is missing on those routes.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "High"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "22e50928-763c-40f3-ab66-793ca180bbaf",
+          "key": "AUTH-8",
+          "fields": {
+            "summary": "LDAP authentication fails when DN contains comma",
+            "description": "Distinguished names that include a comma (e.g. OU=Sales, Inc) break the LDAP bind call because the DN is not properly escaped.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "High"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "ce367f2c-426e-4fd4-8179-cc7aa2999800",
+          "key": "PERF-1",
+          "fields": {
+            "summary": "Dashboard takes >10 seconds to load for accounts with >500 projects",
+            "description": "The project list query performs N+1 selects against the permissions table. Adding an eager-load join should fix this.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "In Progress"
+            }
+          }
+        },
+        {
+          "id": "7270b14a-d187-4654-a3b7-a06a00ccdfbe",
+          "key": "PERF-2",
+          "fields": {
+            "summary": "Search results timeout for queries with more than 3 filter criteria",
+            "description": "ElasticSearch queries with compound filters time out after 5 s. Query planning shows missing composite index on (status, priority, assignee).",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "In Progress"
+            }
+          }
+        },
+        {
+          "id": "242a21c3-56e8-43e6-8f60-c6411f9b86f5",
+          "key": "PERF-3",
+          "fields": {
+            "summary": "PDF export hangs when report contains more than 200 rows",
+            "description": "The PDF renderer loads all rows into memory at once. Streaming or pagination is required to prevent OOM and timeout.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "In Progress"
+            }
+          }
+        },
+        {
+          "id": "cb58a479-4e71-4250-be80-6c770e2e9c99",
+          "key": "PERF-4",
+          "fields": {
+            "summary": "API response time degrades linearly with number of open issues",
+            "description": "The /api/issues endpoint re-counts total open issues on every request. Caching the count or using a materialized view would improve latency.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "In Progress"
+            }
+          }
+        },
+        {
+          "id": "fb42677b-3425-424b-a2d3-fd8fd7e83d81",
+          "key": "PERF-5",
+          "fields": {
+            "summary": "Slow startup time when connection pool is exhausted",
+            "description": "If all database connections are occupied during application startup, the health-check endpoint times out and Kubernetes restarts the pod unnecessarily.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "In Progress"
+            }
+          }
+        },
+        {
+          "id": "bf34d3ca-0c31-4165-abaa-34d9f39522ee",
+          "key": "PERF-6",
+          "fields": {
+            "summary": "Bulk import endpoint blocks the event loop for >30 seconds",
+            "description": "CSV import is processed synchronously in the request handler. Moving it to a background task queue would unblock the worker.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "In Progress"
+            }
+          }
+        },
+        {
+          "id": "87dbc404-f93f-417b-8d2e-7a6eb1e57f85",
+          "key": "PERF-7",
+          "fields": {
+            "summary": "Notification fan-out causes latency spikes during peak hours",
+            "description": "Sending notifications to all project members is done synchronously in a loop. At peak, 800+ notifications block the worker thread for 45 seconds.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "In Progress"
+            }
+          }
+        },
+        {
+          "id": "23ce5738-da4e-44f1-a2b3-9350f00794a0",
+          "key": "PERF-8",
+          "fields": {
+            "summary": "Autocomplete suggestions lag by 2-3 seconds on slow networks",
+            "description": "The autocomplete widget waits for the full response before rendering. Streaming or progressive rendering would improve perceived performance.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "In Progress"
+            }
+          }
+        },
+        {
+          "id": "51bc25a7-7ecd-4b96-bf2e-3c165a4e51c9",
+          "key": "UI-1",
+          "fields": {
+            "summary": "Dropdown menu overflows viewport on mobile screens",
+            "description": "On viewports narrower than 375px the dropdown overflows to the right. Adding overflow-x: hidden and a max-width constraint fixes the issue.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Low"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "17023495-4d29-4ee0-854f-c376c8a5e2c8",
+          "key": "UI-2",
+          "fields": {
+            "summary": "Dark mode toggle resets to light mode after page refresh",
+            "description": "The user preference is stored only in React state and not persisted to localStorage. After a hard refresh the theme reverts to the default.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Low"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "b8b55c5a-17cc-4685-a3ac-b51038684f0d",
+          "key": "UI-3",
+          "fields": {
+            "summary": "Table column resizing broken in Firefox 120",
+            "description": "The drag-to-resize handler uses a deprecated Mouse-Events API that Firefox 120 removed. PointerEvents API should be used instead.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Low"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "bd5d409f-e25a-469a-8a48-4f319a09441f",
+          "key": "UI-4",
+          "fields": {
+            "summary": "Tooltip z-index conflicts with modal overlay",
+            "description": "When a tooltip is triggered inside a modal, it renders behind the overlay backdrop due to a lower z-index stacking context.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Low"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "372a131e-9553-4deb-a048-fd4e55eb6d6f",
+          "key": "UI-5",
+          "fields": {
+            "summary": "File upload button not accessible via keyboard navigation",
+            "description": "The custom file-input widget suppresses the native focus ring and has no tabindex, making it unreachable without a mouse.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Low"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "d1cdb09c-df79-46c1-ab19-9a53d4c1d642",
+          "key": "UI-6",
+          "fields": {
+            "summary": "Date picker shows incorrect month when locale uses non-Gregorian calendar",
+            "description": "The date-picker component assumes the Gregorian calendar. Persian and Hebrew locales display the wrong month header.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Low"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "2236f98a-5bdb-4ec5-a03e-c34898e87c2a",
+          "key": "UI-7",
+          "fields": {
+            "summary": "Sidebar layout breaks when browser zoom is set to 150%",
+            "description": "At 150% zoom the CSS grid overflows and the main content panel is hidden behind the sidebar.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Low"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "55e80c43-8be3-4d62-b569-75913666c2fd",
+          "key": "UI-8",
+          "fields": {
+            "summary": "Icon buttons missing aria-label causing screen-reader issues",
+            "description": "Buttons that display only an icon have no accessible name. Screen readers announce them as unlabelled, failing WCAG 2.1 AA.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Low"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "fe317171-38df-485f-84d1-e69850bc0f63",
+          "key": "DB-1",
+          "fields": {
+            "summary": "Foreign key violation on concurrent ticket creation",
+            "description": "Under concurrent load two requests try to insert a ticket with the same parent_id. One succeeds, the other raises a foreign-key constraint error because the parent was not yet committed.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Critical"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "33210626-8f0f-4709-9e94-d5f33bb724bc",
+          "key": "DB-2",
+          "fields": {
+            "summary": "Migration fails on PostgreSQL 18 due to reserved keyword",
+            "description": "Column named 'value' was reserved in PostgreSQL 18. ALTER TABLE rename is needed before running migration 0043.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Critical"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "ac444345-a495-4b54-b2e7-a37fefa5c41d",
+          "key": "DB-3",
+          "fields": {
+            "summary": "Deadlock detected when bulk-updating issue statuses",
+            "description": "Two background jobs update overlapping sets of issues in opposite order, causing a deadlock. Using SELECT ... FOR UPDATE with a consistent ordering fixes this.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Critical"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "d4d15963-5631-40c1-9ae4-62cd8e107e1e",
+          "key": "DB-4",
+          "fields": {
+            "summary": "Connection pool exhausted after failed transaction rollback",
+            "description": "If an exception occurs mid-transaction and the rollback is not called, the connection is returned in a dirty state and eventually exhausts the pool.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Critical"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "1d2893ff-6d34-4203-a950-d59c078e2646",
+          "key": "DB-5",
+          "fields": {
+            "summary": "Full-text search index not updated after issue rename",
+            "description": "The tsvector index on the issues table is populated via a trigger that fires only on INSERT, not on UPDATE. Renaming an issue makes the old title searchable.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Critical"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "68856c6b-921a-4f01-960e-da8df0deb8d6",
+          "key": "DB-6",
+          "fields": {
+            "summary": "Cascade delete removes child records before parent audit log is written",
+            "description": "The ON DELETE CASCADE constraint fires before the audit trigger, resulting in orphaned audit entries that reference deleted rows.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Critical"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "fcde4e55-48fc-47e0-a86b-4473f31e2ce9",
+          "key": "DB-7",
+          "fields": {
+            "summary": "JSONB query fails with parse error for null values in nested objects",
+            "description": "The jsonb_path_query function returns an error when traversing a path that contains null mid-level nodes. Explicit null checks are required.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Critical"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "b90127dd-845c-4cc7-8c78-00ad1ddd5eff",
+          "key": "DB-8",
+          "fields": {
+            "summary": "Slow query plan chosen for paginated results with large offsets",
+            "description": "OFFSET-based pagination on the issues table degrades to sequential scan after page 50. Keyset pagination (WHERE id > last_seen_id) would maintain consistent performance.",
+            "issuetype": {
+              "name": "Bug"
+            },
+            "priority": {
+              "name": "Critical"
+            },
+            "status": {
+              "name": "Open"
+            }
+          }
+        },
+        {
+          "id": "a8ee0e60-8aa5-4aea-8a2d-8b4019223913",
+          "key": "FEAT-1",
+          "fields": {
+            "summary": "Add bulk label assignment from issue list view",
+            "description": "Users want to select multiple issues and apply or remove labels in one action without opening each issue individually.",
+            "issuetype": {
+              "name": "Story"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "Backlog"
+            }
+          }
+        },
+        {
+          "id": "96cb4b3f-059b-4c9e-9f02-cd142040cf2d",
+          "key": "FEAT-2",
+          "fields": {
+            "summary": "Implement Slack integration for issue notifications",
+            "description": "Teams want to receive create/update/close notifications in a designated Slack channel. The integration should support per-project channel configuration.",
+            "issuetype": {
+              "name": "Story"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "Backlog"
+            }
+          }
+        },
+        {
+          "id": "8939fc5c-d5ce-46e9-9e62-00f848a7d741",
+          "key": "FEAT-3",
+          "fields": {
+            "summary": "Support custom fields in CSV export",
+            "description": "The CSV export currently only includes built-in fields. Users want to include custom fields and choose column order.",
+            "issuetype": {
+              "name": "Story"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "Backlog"
+            }
+          }
+        },
+        {
+          "id": "f0231f0e-1a16-454d-ad15-0edbd4d2c041",
+          "key": "FEAT-4",
+          "fields": {
+            "summary": "Add issue dependency graph visualization",
+            "description": "Product managers want a visual graph showing blocking/blocked-by relationships between issues, similar to a dependency map.",
+            "issuetype": {
+              "name": "Story"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "Backlog"
+            }
+          }
+        },
+        {
+          "id": "84ca10be-a8c8-4f7c-bd9f-7b8702387db6",
+          "key": "FEAT-5",
+          "fields": {
+            "summary": "Implement SLA tracking for customer-reported issues",
+            "description": "Support teams need automatic SLA timers that trigger escalation emails when response or resolution deadlines are approaching.",
+            "issuetype": {
+              "name": "Story"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "Backlog"
+            }
+          }
+        },
+        {
+          "id": "8727a149-ce9d-4ae1-b87a-9df8bf5e75fa",
+          "key": "FEAT-6",
+          "fields": {
+            "summary": "Allow markdown in issue descriptions",
+            "description": "Currently only plain text is supported. Teams want to use **bold**, *italic*, code blocks, and bullet lists in issue descriptions.",
+            "issuetype": {
+              "name": "Story"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "Backlog"
+            }
+          }
+        },
+        {
+          "id": "b006c5b1-df0c-4321-9ab8-128179ebe84b",
+          "key": "FEAT-7",
+          "fields": {
+            "summary": "Add recurring issue templates for weekly maintenance tasks",
+            "description": "DevOps teams create the same maintenance tasks every week. A scheduling feature that auto-creates issues from templates would save time.",
+            "issuetype": {
+              "name": "Story"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "Backlog"
+            }
+          }
+        },
+        {
+          "id": "fc0e48f6-61ac-4d42-b056-49964199d8c7",
+          "key": "FEAT-8",
+          "fields": {
+            "summary": "Provide REST API endpoint for issue analytics",
+            "description": "Data teams want to pull issue metrics (created vs closed, average age, throughput by team) via API instead of using the UI reports.",
+            "issuetype": {
+              "name": "Story"
+            },
+            "priority": {
+              "name": "Medium"
+            },
+            "status": {
+              "name": "Backlog"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,11 +1,12 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, UTC
 
 from sqlalchemy import Column, String, Integer, DateTime, Text, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
 from pgvector.sqlalchemy import Vector
 
 from .database import Base
+from .config import settings
 
 
 class Analysis(Base):
@@ -19,7 +20,7 @@ class Analysis(Base):
     status = Column(String, nullable=False, default="pending")
     error_message = Column(Text)
     total_tickets = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.utcnow())
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     completed_at = Column(DateTime(timezone=True))
 
 
@@ -35,7 +36,7 @@ class Ticket(Base):
     priority = Column(String)
     ticket_status = Column(String)
     cluster_id = Column(Integer)
-    embedding = Column(Vector(384))
+    embedding = Column(Vector(settings.OLLAMA_EMBED_DIM))
 
 
 class Cluster(Base):

@@ -1,10 +1,10 @@
 import logging
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional
 
 from .jira import JiraService
 from .embeddings import generate_embeddings
-from .clustering import cluster_embeddings, extract_keywords, get_representative_tickets
+from .clustering import cluster_embeddings, extract_keywords, get_representative_tickets, generate_cluster_label
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,15 @@ def run_analysis(
                 for t in cluster_tickets
             ]
             keywords = extract_keywords(cluster_texts, top_n=5)
-            label = " / ".join(keywords[:3]) if keywords else f"Cluster {cid + 1}"
+            # Ask the LLM for a descriptive label; fall back to keywords if unavailable.
+            try:
+                label = generate_cluster_label([t["summary"] for t in cluster_tickets])
+            except Exception as llm_exc:
+                logger.warning(
+                    "[%s] LLM labelling failed for cluster %d, using keywords: %s",
+                    analysis_id, cid, llm_exc,
+                )
+                label = " / ".join(keywords[:3]) if keywords else f"Cluster {cid + 1}"
             rep = get_representative_tickets(
                 embeddings, cluster_labels, cluster_centers, raw_tickets, cid, top_n=3
             )
@@ -112,7 +120,7 @@ def run_analysis(
         # ── 8. Finalize ──────────────────────────────────────────────────────
         analysis.status = "completed"
         analysis.total_tickets = len(raw_tickets)
-        analysis.completed_at = datetime.utcnow()
+        analysis.completed_at = datetime.now(UTC)
         db.commit()
         logger.info("[%s] Analysis completed.", analysis_id)
 

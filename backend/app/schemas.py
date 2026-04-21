@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime
@@ -13,6 +13,8 @@ class AnalysisCreate(BaseModel):
 
 
 class ClusterResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     cluster_number: int
     label: str
@@ -21,11 +23,10 @@ class ClusterResponse(BaseModel):
     representative_tickets: Optional[list] = None
     percentage: Optional[float] = None
 
-    class Config:
-        from_attributes = True
-
 
 class AnalysisResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID
     jira_url: str
     username: Optional[str] = None
@@ -37,6 +38,3 @@ class AnalysisResponse(BaseModel):
     created_at: datetime
     completed_at: Optional[datetime] = None
     clusters: Optional[List[ClusterResponse]] = None
-
-    class Config:
-        from_attributes = True
