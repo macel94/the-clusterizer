@@ -48,7 +48,7 @@ docker compose up --build
 
 This repo now includes a `.devcontainer/devcontainer.json` so you can open it directly in a local Dev Container or in GitHub Codespaces.
 
-- the container installs Python 3.12, Node.js 20 and Docker tooling
+- the container installs Python 3.12, Node.js 24 and Docker tooling
 - the initial setup creates `backend/.venv`, installs backend test dependencies, and runs `npm install` in `frontend/`
 - ports `3000`, `8000`, `5432`, `5433`, `11434`, and `18080` are forwarded for the app and the real-Jira test stack
 
