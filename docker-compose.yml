@@ -24,7 +24,7 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/version > /dev/null"]
+      test: ["CMD-SHELL", "ollama list > /dev/null"]
       interval: 10s
       timeout: 10s
       retries: 20
