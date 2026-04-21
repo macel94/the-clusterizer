@@ -1,0 +1,44 @@
+{
+  "name": "the-clusterizer",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.12"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "24"
+    },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+  "forwardPorts": [3000, 8000, 11434, 5432, 5433, 18080],
+  "portsAttributes": {
+    "3000": {
+      "label": "Frontend"
+    },
+    "8000": {
+      "label": "Backend API"
+    },
+    "11434": {
+      "label": "Ollama"
+    },
+    "5432": {
+      "label": "App Postgres"
+    },
+    "5433": {
+      "label": "Test Postgres"
+    },
+    "18080": {
+      "label": "Jira test instance"
+    }
+  },
+  "postCreateCommand": "bash -lc 'cd backend && python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt -r requirements-test.txt && cd ../frontend && npm install'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}

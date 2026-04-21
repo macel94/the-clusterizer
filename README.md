@@ -44,6 +44,21 @@ docker compose up --build
 
 ---
 
+## Dev Containers / GitHub Codespaces
+
+This repo now includes a `.devcontainer/devcontainer.json` so you can open it directly in a local Dev Container or in GitHub Codespaces.
+
+- the container installs Python 3.12, Node.js 24 and Docker tooling
+- the initial setup creates `backend/.venv`, installs backend test dependencies, and runs `npm install` in `frontend/`
+- ports `3000`, `8000`, `5432`, `5433`, `11434`, and `18080` are forwarded for the app and the real-Jira test stack
+
+Once the Codespace/container is ready, use the same commands as in the local sections below.
+
+> [!NOTE]
+> The app still needs an Ollama endpoint. In Codespaces, the easiest option is usually to point `OLLAMA_URL` at a reachable external Ollama instance rather than trying to run a large local model inside the Codespace.
+
+---
+
 ## Local development (without Docker)
 
 ### Prerequisites
@@ -114,9 +129,24 @@ The repo includes a **real Jira** docker test stack for end-to-end validation. I
 ### Run the full real-Jira test stack
 
 ```bash
+# required only for the full Jira provisioning flow
 export JIRA_LICENSE='...your Jira evaluation/developer license...'
 docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
 ```
+
+`JIRA_LICENSE` is **not** required for:
+
+- normal backend tests (`cd backend && pytest`)
+- frontend builds (`cd frontend && npm run build`)
+- the Jira setup smoke test that stops at the license screen
+
+It is only required when you want the Playwright setup container to finish provisioning Jira and seed issues end-to-end, because Jira itself refuses to continue without a valid license key.
+
+There is no automatic license generation in this repo. Use a temporary Jira Software Data Center evaluation/developer license obtained from Atlassian, then provide it as either:
+
+- an exported shell variable (`export JIRA_LICENSE='...'`)
+- a value in your local root `.env` file
+- a CI secret exposed as `JIRA_LICENSE`
 
 ### Validate the Jira setup automation without a license
 
