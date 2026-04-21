@@ -1,0 +1,90 @@
+services:
+  db:
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_DB: clusterizer_test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  jira-db:
+    image: postgres:17.9
+    environment:
+      POSTGRES_DB: jiradb
+      POSTGRES_USER: jira
+      POSTGRES_PASSWORD: jira
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jira -d jiradb"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  jira:
+    image: atlassian/jira-software:11.3.4
+    environment:
+      JVM_MINIMUM_MEMORY: 1024m
+      JVM_MAXIMUM_MEMORY: 2048m
+    ports:
+      - "18080:8080"
+    depends_on:
+      jira-db:
+        condition: service_healthy
+
+  jira-setup:
+    image: mcr.microsoft.com/playwright:v1.55.1-noble
+    environment:
+      JIRA_BASE_URL: http://jira:8080
+      JIRA_LICENSE: ${JIRA_LICENSE:-}
+      JIRA_ADMIN_USERNAME: admin
+      JIRA_ADMIN_PASSWORD: adminadmin
+      JIRA_ADMIN_FULL_NAME: Clusterizer Admin
+      JIRA_ADMIN_EMAIL: admin@example.com
+      JIRA_TITLE: Clusterizer Test Jira
+      JIRA_PROJECT_KEY: CLSTR
+      JIRA_PROJECT_NAME: Clusterizer Test Project
+      JIRA_DB_HOST: jira-db
+      JIRA_DB_PORT: 5432
+      JIRA_DB_NAME: jiradb
+      JIRA_DB_USERNAME: jira
+      JIRA_DB_PASSWORD: jira
+      JIRA_SETUP_STOP_AFTER: ${JIRA_SETUP_STOP_AFTER:-}
+    depends_on:
+      jira-db:
+        condition: service_healthy
+      jira:
+        condition: service_started
+    volumes:
+      - ./backend/tests/real_jira:/work
+    command: >
+      bash -lc "cd /work && npm install --silent && node setup-jira.js"
+
+  backend-test:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql://test:test@db:5432/clusterizer_test
+      RUN_REAL_JIRA_TESTS: "1"
+      REAL_JIRA_URL: http://jira:8080
+      REAL_JIRA_USERNAME: admin
+      REAL_JIRA_PASSWORD: adminadmin
+      REAL_JIRA_JQL: project = CLSTR ORDER BY created DESC
+    command: >
+      sh -c "pip install -r requirements-test.txt -q &&
+             pytest tests/ -v --tb=short"
+    depends_on:
+      db:
+        condition: service_healthy
+      jira-setup:
+        condition: service_completed_successfully
+    volumes:
+      - ./backend:/app
+
+volumes: {}
