@@ -12,7 +12,7 @@
   },
   "runArgs": [
     "--privileged",
-    "--userns=host"
+    "--userns=keep-id"
   ],
   "forwardPorts": [
     3000,
