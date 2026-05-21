@@ -1,6 +1,6 @@
 services:
   db:
-    image: pgvector/pgvector:pg18
+    image: docker.io/pgvector/pgvector:pg18
     environment:
       POSTGRES_DB: clusterizer
       POSTGRES_USER: clusterizer
@@ -18,7 +18,7 @@ services:
   # Ollama serves both the embedding and LLM endpoints locally.
   # GPU passthrough: add "deploy.resources.reservations.devices" if you have CUDA/ROCm.
   ollama:
-    image: ollama/ollama
+    image: docker.io/ollama/ollama
     ports:
       - "11434:11434"
     volumes:
@@ -32,7 +32,7 @@ services:
   # One-shot container that pulls the required models into the shared volume.
   # Re-runs only if models are missing (Ollama skips already-pulled models).
   ollama-model-pull:
-    image: ollama/ollama
+    image: docker.io/ollama/ollama
     volumes:
       - ollama_data:/root/.ollama
     environment:
@@ -70,7 +70,7 @@ services:
       - ./backend:/app
 
   nginx:
-    image: nginx:alpine
+    image: docker.io/library/nginx:alpine
     ports:
       - "3000:80"
     volumes:

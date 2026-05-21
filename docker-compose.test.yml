@@ -1,6 +1,6 @@
 services:
   db:
-    image: pgvector/pgvector:pg18
+    image: docker.io/pgvector/pgvector:pg18
     environment:
       POSTGRES_DB: clusterizer_test
       POSTGRES_USER: test
@@ -14,7 +14,7 @@ services:
       retries: 10
 
   jira-db:
-    image: postgres:17.9
+    image: docker.io/library/postgres:17.9
     environment:
       POSTGRES_DB: jiradb
       POSTGRES_USER: jira
@@ -28,7 +28,7 @@ services:
       retries: 20
 
   jira:
-    image: atlassian/jira-software:11.3.4
+    image: docker.io/atlassian/jira-software:11.3.4
     environment:
       JVM_MINIMUM_MEMORY: 1024m
       JVM_MAXIMUM_MEMORY: 2048m

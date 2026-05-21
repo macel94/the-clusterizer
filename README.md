@@ -39,6 +39,10 @@ cd the-clusterizer
 podman compose up --build
 ```
 
+That same command works from the devcontainer terminal too. The devcontainer installs
+`podman-compose` and wraps `podman` to the rootful engine inside the privileged
+container, which avoids the nested rootless `newuidmap` failure.
+
 If you previously ran an older Postgres image for this repo, remove the stale named volume once before restarting so Compose can initialize the PostgreSQL 18 layout cleanly:
 
 ```bash
@@ -87,10 +91,13 @@ The shared workspace setting in `.vscode/settings.json` points the Dev Container
 
 - Base image: Ubuntu 24.04
 - Tooling: Python 3.12, Node.js 24
-- Post-create setup creates `backend/.venv`, installs `backend/requirements.txt` and `backend/requirements-test.txt`, and runs `npm install` in `frontend`
+- Post-create setup installs `podman-compose`, creates rootful `podman` wrappers in `/usr/local/bin`, creates `backend/.venv`, installs `backend/requirements.txt` and `backend/requirements-test.txt`, and runs `npm install` in `frontend`
 - Forwarded ports: `3000`, `8000`, `11434`, `5432`, `5433`, `18080`
 
-The devcontainer is intentionally a tooling container only. The application stack and the optional compose-based test stack stay on the host, which keeps the supported local Podman flow aligned with GitHub CI.
+The devcontainer is a full development environment. You can run the application
+stack from its integrated terminal with `podman compose up --build`, and the nested
+Podman storage is persisted in the `the-clusterizer-podman-storage` volume so images
+and named volumes survive devcontainer rebuilds.
 
 ---
 
