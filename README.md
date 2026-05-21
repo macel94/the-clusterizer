@@ -31,18 +31,18 @@ Notes:
 
 ---
 
-## Quick start with Docker Compose
+## Quick start with Podman Compose
 
 ```bash
 git clone https://github.com/macel94/the-clusterizer.git
 cd the-clusterizer
-docker compose up --build
+podman compose up --build
 ```
 
 If you previously ran an older Postgres image for this repo, remove the stale named volume once before restarting so Compose can initialize the PostgreSQL 18 layout cleanly:
 
 ```bash
-docker volume rm the-clusterizer_postgres_data
+podman volume rm the-clusterizer_postgres_data
 ```
 
 This starts the local development stack:
@@ -79,20 +79,18 @@ Common embedding dimensions:
 
 ---
 
-## Dev Containers / GitHub Codespaces
+## Dev Containers
 
-The repo includes `.devcontainer/devcontainer.json` for local Dev Containers and GitHub Codespaces.
+The repo includes `.devcontainer/devcontainer.json` for local Dev Containers.
 
-This project works reasonably well in a standard GitHub Codespaces machine with 4 CPU cores and 16 GB of RAM for normal development, test runs, and Compose-based local stack usage.
-
-![alt text](Usage-During-Analysis-Using-gemma4.png)
+The shared workspace setting in `.vscode/settings.json` points the Dev Containers extension at `podman` for this repository, so `Reopen in Container` uses Podman by default as long as `podman` is on your `PATH`.
 
 - Base image: Ubuntu 24.04
-- Tooling: Python 3.12, Node.js 24, Docker-outside-of-Docker
+- Tooling: Python 3.12, Node.js 24
 - Post-create setup creates `backend/.venv`, installs `backend/requirements.txt` and `backend/requirements-test.txt`, and runs `npm install` in `frontend`
 - Forwarded ports: `3000`, `8000`, `11434`, `5432`, `5433`, `18080`
 
-In Codespaces, you still need a reachable Ollama endpoint. In practice that usually means pointing `OLLAMA_URL` at an external Ollama instance.
+The devcontainer is intentionally a tooling container only. The application stack and the optional compose-based test stack stay on the host, which keeps the supported local Podman flow aligned with GitHub CI.
 
 ---
 
@@ -104,7 +102,9 @@ In Codespaces, you still need a reachable Ollama endpoint. In practice that usua
 - Node.js 20+
 - PostgreSQL 18 with the `pgvector` extension
 - Ollama with the models you want to use
-- Docker, if you want to run the backend pytest suite locally via Testcontainers
+- Podman with a compose provider, if you want to run the local app or test stacks with containers
+
+Docker is no longer required for the supported local devcontainer and GitHub CI workflow.
 
 ### Backend
 
@@ -120,12 +120,12 @@ export OLLAMA_EMBED_MODEL=embeddinggemma
 export OLLAMA_EMBED_DIM=768
 export OLLAMA_LLM_MODEL=gemma4:e4b
 
+uvicorn app.main:app --reload
+```
+
 If you already ran analyses with a different embedding model, delete or rerun
 those analyses after switching defaults. Semantic search should compare queries
 against embeddings produced by the same model family.
-
-uvicorn app.main:app --reload
-```
 
 On startup, the backend creates its tables and runs `CREATE EXTENSION IF NOT EXISTS vector`, so the configured PostgreSQL user must be allowed to create that extension.
 
@@ -140,7 +140,7 @@ npm run dev
 When you run the Vite dev server directly, it listens on http://localhost:5173.
 For standalone frontend development, set `VITE_API_BASE=http://localhost:8000` before starting it so `/api` requests go straight to the backend.
 
-With Docker Compose and Codespaces, open http://localhost:3000 instead.
+With the compose stack, open http://localhost:3000 instead.
 That port is served by nginx, which proxies frontend assets to the internal Vite server on `frontend:5173` and `/api` requests to the backend.
 
 ---
@@ -212,12 +212,38 @@ Completed analysis responses include:
 ```bash
 cd backend
 source .venv/bin/activate
-pytest
+pytest -m "not real_jira"
 ```
 
-The backend test suite uses `testcontainers` to start a PostgreSQL 18 + pgvector container, so a local Docker daemon must be available.
+If `TEST_DATABASE_URL` is set, the backend test suite uses that database instead of starting PostgreSQL via `testcontainers`. This is the path used by GitHub Actions and by `docker-compose.test.yml`.
+
+Inside the devcontainer, a host-managed Podman PostgreSQL service is typically reachable as `host.containers.internal`. For example:
+
+```bash
+export TEST_DATABASE_URL=postgresql+psycopg2://test:test@host.containers.internal:5433/clusterizer_test
+pytest -m "not real_jira"
+```
+
+From the host, you can also run the compose-based test stack directly:
+
+```bash
+podman compose -f docker-compose.test.yml up --build backend-test
+```
 
 ### Frontend build
+
+```bash
+cd frontend
+npm ci
+npm run build
+```
+
+## CI
+
+GitHub Actions runs the workflow in `.github/workflows/ci.yml`.
+
+- Backend: `pytest -m "not real_jira"` against a `pgvector/pgvector:pg18` PostgreSQL service container via `TEST_DATABASE_URL`
+- Frontend: `npm ci` and `npm run build`
 
 ```bash
 cd frontend
