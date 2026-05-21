@@ -7,9 +7,21 @@
     },
     "ghcr.io/devcontainers/features/node:1": {
       "version": "24"
-    }
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "forwardPorts": [3000, 8000, 11434, 5432, 5433, 18080],
+  "runArgs": [
+    "--privileged",
+    "--userns=host"
+  ],
+  "forwardPorts": [
+    3000,
+    8000,
+    11434,
+    5432,
+    5433,
+    18080
+  ],
   "portsAttributes": {
     "3000": {
       "label": "Frontend"

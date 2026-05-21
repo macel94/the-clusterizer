@@ -5,7 +5,7 @@ set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
 sudo apt-get update
-sudo apt-get install -y ripgrep jq
+sudo apt-get install -y ripgrep jq podman uidmap slirp4netns fuse-overlayfs
 
 cd /workspaces/the-clusterizer/backend
 python -m venv .venv

@@ -34,3 +34,4 @@ frontend/.vite/
 .env
 .env.local
 .env.*.local
+libpod/tmp/pause.pid
