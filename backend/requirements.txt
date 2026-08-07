@@ -5,6 +5,6 @@ psycopg2-binary==2.9.12
 pgvector==0.4.2
 scikit-learn==1.8.0
 numpy==2.4.4
-requests==2.31.0
+requests==2.33.0
 python-dotenv==1.2.2
 pydantic-settings==2.14.0
